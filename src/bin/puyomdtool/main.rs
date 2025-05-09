@@ -1,4 +1,4 @@
-use puyomdtool::compress::Compress;
+use puyomdtool::{compress::Compress, decompress::Decompress};
 use std::{env, error::Error};
 
 fn print_help() {
@@ -10,8 +10,10 @@ fn print_help() {
     println!("Usage 2: puyomdtool fix src_file.bin dst_file.bin");
     println!("  - This will fix the header of any Megadrive rom passed to it.");
     println!();
-    println!("Usage 3: puyomdtool [compress|decompress] src_file.bin dst_file.bin");
+    println!("Usage 3: puyomdtool [compress|decompress(nobuf)] src_file.bin dst_file.bin");
     println!("  - This will compress / decompress src_file.bin and save it as dst_file.bin");
+    println!("  - decompressnobuf disables an intended(?) part of the decompression that can lead");
+    println!("    to data being discarded.");
     println!();
     println!("For more advanced usages, pass --help_advanced.");
 }
@@ -79,6 +81,12 @@ fn main() -> Result<(), Box<dyn Error>> {
             "compress" if args.len() == 3 => Compress::run(&args[2], &args[2]),
             "compress" if args.len() == 4 => Compress::run(&args[2], &args[3]),
             "compress" => Err(Box::new(PMDTError::InvalidNumOfArguments)),
+            "decompress" if args.len() == 3 => Decompress::run(&args[2], &args[2], false),
+            "decompress" if args.len() == 4 => Decompress::run(&args[2], &args[3], false),
+            "decompress" => Err(Box::new(PMDTError::InvalidNumOfArguments)),
+            "decompressnobuf" if args.len() == 3 => Decompress::run(&args[2], &args[2], true),
+            "decompressnobuf" if args.len() == 4 => Decompress::run(&args[2], &args[3], true),
+            "decompressnobuf" => Err(Box::new(PMDTError::InvalidNumOfArguments)),
             _ => Ok(()),
         }
     };

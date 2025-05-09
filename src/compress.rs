@@ -17,18 +17,17 @@ pub struct Compress {
     compress_ind_bak: usize,
 
     output_buffer: Vec<u8>,
-    output_name: String,
 }
 
 impl Compress {
     pub fn run(input_filename: &str, output_filename: &str) -> Result<(), Box<dyn Error>> {
-        let mut compress_instance = Compress::new(input_filename, output_filename)?;
+        let mut compress_instance = Compress::new(input_filename)?;
         compress_instance.compress();
         std::fs::write(output_filename, compress_instance.output_buffer)?;
         Ok(())
     }
 
-    fn new(input_filename: &str, output_filename: &str) -> Result<Self, Box<dyn Error>> {
+    fn new(input_filename: &str) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
             init_data: std::fs::read(input_filename)?,
             init_ind: 0,
@@ -40,7 +39,6 @@ impl Compress {
             compress_ind_bak: 0,
 
             output_buffer: Vec::new(),
-            output_name: output_filename.to_string(),
         })
     }
 
@@ -58,7 +56,7 @@ impl Compress {
 
     // Takes in an array and checks to see if it can be found inside the compression buffer.
     // Returns Some(index) if it is found, and None if it isn't.
-    fn find_in_buf(&mut self, a: &Vec<u8>) -> Option<i32> {
+    fn find_in_buf(&mut self, a: &[u8]) -> Option<i32> {
         // Do a backup of the buffer before we touch anything.  We'll be modifying it a lot on the
         // fly here, and we need to be able to revert the changes later.
         self.backup_buf();
@@ -68,26 +66,30 @@ impl Compress {
 
         // Loop until we've looped all the way around to the original value again
         'main_loop: while i < (0x100 | self.compress_ind_bak as u16) {
-            // Reload the original buffer
-            self.restore_buf();
+            // Checks for an intended race condition where the data in the beginning of a can be
+            // detected in compress_buf.
+            let race_condition = i + a.len() as u16 >= (0x100 | self.compress_ind_bak as u16);
+
+            // Reload the original buffer only if we're hitting the race condition (optimization)
+            if race_condition {
+                self.restore_buf();
+            }
 
             // Loop for the length of the inputted array.
-            for x in 0..a.len() {
-                match self.read_buf(i as usize + x) {
-                    Some(val) => {
-                        // If the index contains an initialized value, check to see if it's the
-                        // next value we expect.  If so, update the compression buffer, and if not,
-                        // continue to the next index.
-                        if val == a[x] {
+            for (pos, cur_byte) in a.iter().enumerate() {
+                match self.read_buf(i as usize + pos) {
+                    // If the index contains an initialized value, check to see if it's the
+                    // next value we expect.  If so, update the compression buffer, and if not,
+                    // continue to the next index.
+                    Some(val) if val == *cur_byte => {
+                        // Only do this if we're hitting the race condition (optimization)
+                        if race_condition {
                             self.write_buf(val);
-                        } else {
-                            i += 1;
-                            continue 'main_loop;
                         }
                     }
-                    None => {
-                        // The value grabbed from the decompression buffer wasn't initialized, so
-                        // go to the next index.
+                    _ => {
+                        // The value grabbed from the decompression buffer wasn't initialized, or
+                        // wasn't the next value we expect, so go to the next index.
                         i += 1;
                         continue 'main_loop;
                     }
@@ -105,25 +107,25 @@ impl Compress {
         None
     }
 
-    // Read from the compress buffer
+    // Read from the compression buffer
     fn read_buf(&self, ind: usize) -> Option<u8> {
         self.compress_buf[ind & 0xFF]
     }
 
-    // Write to the compress buffer
+    // Write to the compression buffer
     fn write_buf(&mut self, val: u8) {
         self.compress_buf[self.compress_ind] = Option::Some(val);
         self.compress_ind += 1;
         self.compress_ind &= 0xFF;
     }
 
-    // Backup the compress buffer
+    // Backup the compression buffer
     fn backup_buf(&mut self) {
         self.compress_buf_bak.copy_from_slice(&self.compress_buf);
         self.compress_ind_bak = self.compress_ind;
     }
 
-    // Restore the compress buffer
+    // Restore the compression buffer
     fn restore_buf(&mut self) {
         self.compress_buf.copy_from_slice(&self.compress_buf_bak);
         self.compress_ind = self.compress_ind_bak;
@@ -131,9 +133,9 @@ impl Compress {
 
     // Determine what the next command in the compressed file will be.  v2 will always contain one
     // byte when the function starts.
-    fn determine_next_command(&mut self, v2: &Vec<u8>) -> CompressCommand {
+    fn determine_next_command(&mut self, v2: &[u8]) -> CompressCommand {
         // Check to see if the data in v2 can be found in the buffer.
-        let mut v3 = v2.clone();
+        let mut v3 = v2.to_vec();
         if self.find_in_buf(&v3).is_none() {
             // If the data cannot be found, do a run
             CompressCommand::Run

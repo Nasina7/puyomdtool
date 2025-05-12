@@ -1,4 +1,6 @@
-use puyomdtool::{compress::Compress, decompress::Decompress};
+use puyomdtool::{
+    PMDTError, compress::Compress, decompress::Decompress, fix_checksum::FixChecksum,
+};
 use std::{env, error::Error};
 
 fn print_help() {
@@ -8,7 +10,7 @@ fn print_help() {
     println!("  - This will build puyodisasm");
     println!();
     println!("Usage 2: puyomdtool fix src_file.bin dst_file.bin");
-    println!("  - This will fix the header of any Megadrive rom passed to it.");
+    println!("  - This will fix the checksum of any Megadrive rom passed to it.");
     println!();
     println!("Usage 3: puyomdtool [compress|decompress(nobuf)] src_file.bin dst_file.bin");
     println!("  - This will compress / decompress src_file.bin and save it as dst_file.bin");
@@ -56,19 +58,6 @@ fn print_help_advanced() {
     println!();
 }
 
-#[derive(Debug)]
-enum PMDTError {
-    InvalidNumOfArguments,
-}
-
-impl std::fmt::Display for PMDTError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?}", self)
-    }
-}
-
-impl std::error::Error for PMDTError {}
-
 fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
 
@@ -87,6 +76,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             "decompressnobuf" if args.len() == 3 => Decompress::run(&args[2], &args[2], true),
             "decompressnobuf" if args.len() == 4 => Decompress::run(&args[2], &args[3], true),
             "decompressnobuf" => Err(Box::new(PMDTError::InvalidNumOfArguments)),
+            "fix" if args.len() == 3 => FixChecksum::run(&args[2], &args[2]),
+            "fix" if args.len() == 4 => FixChecksum::run(&args[2], &args[3]),
+            "fix" => Err(Box::new(PMDTError::InvalidNumOfArguments)),
             _ => Ok(()),
         }
     };

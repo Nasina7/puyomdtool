@@ -1,4 +1,5 @@
 pub mod compress;
+pub mod convert;
 pub mod decompress;
 pub mod fix_checksum;
 
@@ -6,6 +7,8 @@ pub mod fix_checksum;
 pub enum PMDTError {
     InvalidNumOfArguments,
     InvalidRomSize,
+    UnknownMappingType,
+    WrongMappingSize,
 }
 
 impl std::fmt::Display for PMDTError {

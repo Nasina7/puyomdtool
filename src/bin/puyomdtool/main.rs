@@ -1,7 +1,16 @@
 use puyomdtool::{
-    PMDTError, compress::Compress, decompress::Decompress, fix_checksum::FixChecksum,
+    PMDTError, compress::Compress, convert::Convert, decompress::Decompress,
+    fix_checksum::FixChecksum,
 };
 use std::{env, error::Error};
+
+// Todo:
+// * Build System Management (do we need this?)
+// * Mapping Conversion (bgbyte/bgpal -> bgword)
+// * Mapping Conversion (bgword -> bgbyte/bgpal)
+// * Mapping Combining
+// * Mapping Splitting
+// * ASM Parsing
 
 fn print_help() {
     println!("--puyomdtool by Nasina--");
@@ -23,10 +32,14 @@ fn print_help() {
 fn print_help_advanced() {
     println!("--puyomdtool by Nasina--");
     println!();
-    println!("Usage 4: puyomdtool convert src_file.ext dst_file.ext");
+    println!("Usage 4: puyomdtool convert common_word src_file.ext dst_file.ext");
     println!("  - Converts between bgmap types.  Type will be inferred using the file extension.");
     println!("  - If you are using the bgpal type, specify the bgpalm file.");
     println!("    bgpalp will be created or obtained automatically.");
+    println!("  - When converting from a smaller data format to a larger format ");
+    println!("    (bgbyte -> bgpal/bgword or bgbyte/bgpal -> bgword), common_word is used as an ");
+    println!("    OR value (Ex: byte | common_word -> word).  When converting to a smaller format");
+    println!("    this value should be set to zero.");
     println!();
     println!(
         "Usage 5: puyomdtool combine [horizontal|vertical] sizec size1 size2 src_file_1.bgword src_file_2.bgword dst_file.bgword"
@@ -70,6 +83,10 @@ fn main() -> Result<(), Box<dyn Error>> {
             "compress" if args.len() == 3 => Compress::run(&args[2], &args[2]),
             "compress" if args.len() == 4 => Compress::run(&args[2], &args[3]),
             "compress" => Err(Box::new(PMDTError::InvalidNumOfArguments)),
+            "convert" if args.len() == 5 => {
+                Convert::run(&args[3], &args[4], u16::from_str_radix(&args[2], 16)?)
+            }
+            "convert" => Err(Box::new(PMDTError::InvalidNumOfArguments)),
             "decompress" if args.len() == 3 => Decompress::run(&args[2], &args[2], false),
             "decompress" if args.len() == 4 => Decompress::run(&args[2], &args[3], false),
             "decompress" => Err(Box::new(PMDTError::InvalidNumOfArguments)),

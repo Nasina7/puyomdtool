@@ -153,6 +153,7 @@ impl Mapping {
 pub struct Convert {
     input_mapping: Mapping,
     output_mapping: Mapping,
+    lossy_conversion_warning: bool,
 }
 
 impl Convert {
@@ -175,11 +176,24 @@ impl Convert {
         Ok(Self {
             input_mapping: Mapping::new(input_filename, common_word, false)?,
             output_mapping: Mapping::new(output_filename, 0, true)?,
+            lossy_conversion_warning: false,
         })
+    }
+
+    fn print_lossy_conv_warning(&mut self) {
+        if !self.lossy_conversion_warning {
+            println!("[WARN] Lossy background mapping conversion detected!");
+            self.lossy_conversion_warning = true;
+        }
     }
 
     fn convert(&mut self) {
         while let Some(val) = self.input_mapping.read() {
+            match self.output_mapping.map_type {
+                MappingType::Pal if val & 0x9F00 != 0 => self.print_lossy_conv_warning(),
+                MappingType::Byte if val & 0xFF00 != 0 => self.print_lossy_conv_warning(),
+                _ => (),
+            }
             self.output_mapping.write(val);
         }
     }

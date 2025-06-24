@@ -1,5 +1,4 @@
 use std::error::Error;
-use std::option::Option;
 
 pub struct Decompress {
     init_data: Vec<u8>,

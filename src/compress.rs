@@ -20,9 +20,25 @@ pub struct Compress {
 }
 
 impl Compress {
-    pub fn run(input_filename: &str, output_filename: &str) -> Result<(), Box<dyn Error>> {
+    pub fn run(
+        input_filename: &str,
+        output_filename: &str,
+        check_newer: bool,
+    ) -> Result<(), Box<dyn Error>> {
+        if crate::check_output_newer(input_filename, output_filename, check_newer)? {
+            return Ok(());
+        }
+
+        // Run Compression
         let mut compress_instance = Compress::new(input_filename)?;
         compress_instance.compress();
+
+        // Create output directory path if it doesn't exist, and write the file.
+        let path = std::path::Path::new(output_filename);
+        let prefix = path
+            .parent()
+            .ok_or("Getting directory path of file failed!")?;
+        std::fs::create_dir_all(prefix)?;
         std::fs::write(output_filename, compress_instance.output_buffer)?;
         Ok(())
     }

@@ -132,7 +132,15 @@ impl Mapping {
 
     // Save the background mapping file.
     pub fn save(&mut self) -> Result<(), Box<dyn Error>> {
+        // Create output directory path if it doesn't exist, and write the file.
+        let path = std::path::Path::new(&self.filename);
+        let prefix = path
+            .parent()
+            .ok_or("Getting directory path of file failed!")?;
+        std::fs::create_dir_all(prefix)?;
         std::fs::write(&self.filename, &self.map_data)?;
+
+        // Write the Pal file, if it is needed.
         if let MappingType::Pal = self.map_type {
             let mut palp_string = String::from(&self.filename);
             palp_string.pop();
@@ -160,8 +168,13 @@ impl Convert {
     pub fn run(
         input_filename: &str,
         output_filename: &str,
+        check_newer: bool,
         common_word: u16,
     ) -> Result<(), Box<dyn Error>> {
+        if crate::check_output_newer(input_filename, output_filename, check_newer)? {
+            return Ok(());
+        }
+
         let mut convert_instance = Convert::new(input_filename, output_filename, common_word)?;
         convert_instance.convert();
         convert_instance.output_mapping.save()?;

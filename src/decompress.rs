@@ -19,10 +19,23 @@ impl Decompress {
     pub fn run(
         input_filename: &str,
         output_filename: &str,
+        check_newer: bool,
         nobuf: bool,
     ) -> Result<(), Box<dyn Error>> {
+        if crate::check_output_newer(input_filename, output_filename, check_newer)? {
+            return Ok(());
+        }
+
+        // Run Decompression
         let mut decompress_instance = Decompress::new(input_filename, nobuf)?;
         decompress_instance.decompress();
+
+        // Create output directory path if it doesn't exist, and write the file.
+        let path = std::path::Path::new(output_filename);
+        let prefix = path
+            .parent()
+            .ok_or("Getting directory path of file failed!")?;
+        std::fs::create_dir_all(prefix)?;
         std::fs::write(output_filename, decompress_instance.output_buffer)?;
         Ok(())
     }

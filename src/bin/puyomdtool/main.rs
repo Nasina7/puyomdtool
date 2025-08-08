@@ -20,7 +20,7 @@ fn print_help() {
     println!("  - decompressnobuf disables an intended(?) part of the decompression that can lead");
     println!("    to data being discarded.");
     println!();
-    println!("Usage 3: puyomdtool convert common_word src_file.ext dst_file.ext");
+    println!("Usage 3: puyomdtool convert(wordin|wordout) common_word src_file.ext dst_file.ext");
     println!("  - Converts between bgmap types.  Type will be inferred using the file extension.");
     println!("  - If you are using the bgpal type, specify the bgpalm file.");
     println!("    bgpalp will be created or obtained automatically.");
@@ -28,6 +28,8 @@ fn print_help() {
     println!("    (bgbyte -> bgpal/bgword or bgbyte/bgpal -> bgword), common_word is used as an ");
     println!("    OR value (Ex: byte | common_word -> word).  When converting to a smaller format");
     println!("    this value should be set to zero.");
+    println!("  - Using \"convertwordin\" will force src_file.ext to be viewed as bgword format.");
+    println!("  - Using \"convertwordout\" will force dst_file.ext to be viewed as bgword format.");
     println!();
 }
 
@@ -57,6 +59,24 @@ fn main() -> Result<(), Box<dyn Error>> {
                 &args[3],
                 &args[4],
                 check_newer,
+                false,
+                false,
+                u16::from_str_radix(&args[2], 16)?,
+            ),
+            "convertwordin" if args.len() == 5 => Convert::run(
+                &args[3],
+                &args[4],
+                check_newer,
+                true,
+                false,
+                u16::from_str_radix(&args[2], 16)?,
+            ),
+            "convertwordout" if args.len() == 5 => Convert::run(
+                &args[3],
+                &args[4],
+                check_newer,
+                false,
+                true,
                 u16::from_str_radix(&args[2], 16)?,
             ),
             "convert" => Err(Box::new(PMDTError::InvalidNumOfArguments)),

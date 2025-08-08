@@ -23,13 +23,18 @@ struct Mapping {
 }
 
 impl Mapping {
-    pub fn new(filename: &str, common_word: u16, is_output: bool) -> Result<Self, Box<dyn Error>> {
-        let map_type = if filename.ends_with("bgbyte") {
-            MappingType::Byte
+    pub fn new(
+        filename: &str,
+        common_word: u16,
+        is_output: bool,
+        force_word: bool,
+    ) -> Result<Self, Box<dyn Error>> {
+        let map_type = if filename.ends_with("bgword") || force_word {
+            MappingType::Word
         } else if filename.ends_with("bgpalm") {
             MappingType::Pal
-        } else if filename.ends_with("bgword") {
-            MappingType::Word
+        } else if filename.ends_with("bgbyte") {
+            MappingType::Byte
         } else {
             return Err(Box::new(super::PMDTError::UnknownMappingType));
         };
@@ -169,13 +174,21 @@ impl Convert {
         input_filename: &str,
         output_filename: &str,
         check_newer: bool,
+        force_word_in: bool,
+        force_word_out: bool,
         common_word: u16,
     ) -> Result<(), Box<dyn Error>> {
         if crate::check_output_newer(input_filename, output_filename, check_newer)? {
             return Ok(());
         }
 
-        let mut convert_instance = Convert::new(input_filename, output_filename, common_word)?;
+        let mut convert_instance = Convert::new(
+            input_filename,
+            output_filename,
+            force_word_in,
+            force_word_out,
+            common_word,
+        )?;
         convert_instance.convert();
         convert_instance.output_mapping.save()?;
         Ok(())
@@ -184,11 +197,13 @@ impl Convert {
     fn new(
         input_filename: &str,
         output_filename: &str,
+        force_word_in: bool,
+        force_word_out: bool,
         common_word: u16,
     ) -> Result<Self, Box<dyn Error>> {
         Ok(Self {
-            input_mapping: Mapping::new(input_filename, common_word, false)?,
-            output_mapping: Mapping::new(output_filename, 0, true)?,
+            input_mapping: Mapping::new(input_filename, common_word, false, force_word_in)?,
+            output_mapping: Mapping::new(output_filename, 0, true, force_word_out)?,
             lossy_conversion_warning: false,
         })
     }

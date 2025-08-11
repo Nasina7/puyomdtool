@@ -102,8 +102,9 @@ impl Mapping {
                 }
                 MappingType::Pal => {
                     self.read_index += 1;
-                    let pal = (self.pal_data[(self.read_index - 1) / 4]) as u16
-                        >> (2 * (self.read_index & 0x3));
+                    let mut pal = (self.pal_data[(self.read_index - 1) / 4]) as u16
+                        >> (2 * ((self.read_index - 1) & 0x3));
+                    pal &= 0x3;
 
                     (pal << 13) | self.common_word | (self.map_data[self.read_index - 1] as u16)
                 }
@@ -124,7 +125,7 @@ impl Mapping {
             MappingType::Pal => {
                 self.map_data.push(val as u8);
                 // palp tile writes are 2 bits long, need to account for this.
-                self.pal_queue |= (((val & 0x6000) >> 13) as u8) << ((3 - self.pal_queue_ind) * 2);
+                self.pal_queue |= (((val & 0x6000) >> 13) as u8) << (self.pal_queue_ind * 2);
                 self.pal_queue_ind += 1;
                 if self.pal_queue_ind == 4 {
                     self.pal_queue_ind = 0;
